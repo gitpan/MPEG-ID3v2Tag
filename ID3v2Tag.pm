@@ -3,7 +3,7 @@ use strict ;
 # This module may be copied under the same terms as perl itself.
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    $Id: ID3v2Tag.pm,v 1.15 2001/05/09 18:13:00 mattd Exp $
+#    $Id: ID3v2Tag.pm,v 1.18 2001/11/01 17:19:52 mattd Exp $
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -15,7 +15,7 @@ use strict ;
 package MPEG::ID3v2Tag ;
 
 use vars qw($VERSION) ;
-$VERSION = "0.32" ;
+$VERSION = "0.34" ;
 
 use Carp ;
 
@@ -905,7 +905,7 @@ sub parse_data
 
   my $tmp = substr($data, 0, 4, "") ;
   ($self->{ENCODING}, $self->{LANGUAGE}) = unpack("Ca3", $tmp) ;
-  ($self->{CONTENT_DESC}, $self->{LYRICS}) = ($data =~ /^(.*?)\x00(.*)/s) ;
+  ($self->{CONTENT_DESC}, $self->{LYRICS}) = ($data =~ /^(.*?)\x00(.*)\x00/s) ;
 }
 
 sub dump
@@ -1061,6 +1061,90 @@ sub data_as_string
                            $self->{DESCRIPTION} . "\0" . $self->{TEXT}) ;
 }
 
+
+##############################################################################
+# MPEG::ID3Frame::WXXX
+#  User defined URL link frame
+##############################################################################
+package MPEG::ID3Frame::WXXX ;
+use Carp ;
+use vars '@ISA' ;
+@ISA=qw(MPEG::ID3Frame) ;
+use Carp ;
+
+sub frameid () { return "WXXX" } ;
+
+sub new
+{
+	my ($package, $encoding, $description, $url) = @_;
+	my $self = { ENCODING => $encoding,
+				 DESCRIPTION => $description,
+				 URL => $url };
+	bless $self, $package;
+}
+
+sub parse_data
+{
+	my ($self, $data) = @_;
+	my $desc_url;
+
+	($self->{ENCODING}, $desc_url) = unpack( "Ca*", $data );
+	($self->{DESCRIPTION}, $self->{URL}) = split( "\0", $desc_url );
+}
+
+sub encoding { return $_[0]->{ENCODING} };
+sub description { return $_[0]->{DESCRIPTION} };
+sub url { return $_[0]->{URL} };
+
+sub data_as_string
+{
+	my $self = shift;
+	
+	return pack("Ca*", $self->{ENCODING}, 
+				$self->{DESCRIPTION} . "\0" . $self->{URL});
+}
+
+##############################################################################
+# MPEG::ID3Frame::TXXX
+#  User defined text frame
+##############################################################################
+package MPEG::ID3Frame::TXXX ;
+use Carp ;
+use vars '@ISA' ;
+@ISA=qw(MPEG::ID3Frame) ;
+use Carp ;
+
+sub frameid () { return "TXXX" } ;
+
+sub new
+{
+	my ($package, $encoding, $description, $data) = @_;
+	my $self = { ENCODING => $encoding,
+				 DESCRIPTION => $description,
+				 DATA => $data };
+	bless $self, $package;
+}
+
+sub parse_data
+{
+	my ($self, $data) = @_;
+	my $desc_data;
+
+	($self->{ENCODING}, $desc_data) = unpack( "Ca*", $data );
+	($self->{DESCRIPTION}, $self->{DATA}) = split( "\0", $desc_data );
+}
+
+sub encoding { return $_[0]->{ENCODING} };
+sub description { return $_[0]->{DESCRIPTION} };
+sub text { return $_[0]->{DATA} };
+
+sub data_as_string
+{
+	my $self = shift;
+	
+	return pack("Ca*", $self->{ENCODING}, 
+				$self->{DESCRIPTION} . "\0" . $self->{DATA});
+}
 
 1; 
 
@@ -1387,6 +1471,24 @@ The constructor for the Comments frame is called as
 $tag->add_frame("COMM", $encoding, $language, $description, $text) ;
 
 There is no parsing support.
+
+=item WXXX
+
+This is for user-defined url link frames.
+
+$tag->add_frame("WXXX", $encoding, $description, $url) ;
+
+Parsing support exists.  As well as the following accessor methods:
+encoding, description, url
+
+=item TXXX
+
+This is for user-defined text fields
+
+$tag->add_frame("TXXX", $encoding, $description, $text) ;
+
+Parsing support exists.  As well as the following accessor methods:
+encoding, description, text
 
 =head1 SUPPORTING NEW FRAMES
 
