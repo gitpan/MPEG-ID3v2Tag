@@ -2,14 +2,17 @@ use strict ;
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #   Copyright MP3.COM, Inc. 1998, 1999
+#   All Rights Reserved.  Licensed Software.
 #
-# This software may be redistributed under the same terms as Perl.
-# There is absolutely NO WARRANTY for this code!  
+#   THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF MP3.COM, Inc.
+#   The copyright notice above does not evidence any actual or
+#   intended publication of such source code.
 #
+#   PROPRIETARY INFORMATION, PROPERTY OF MP3.COM, Inc.
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    $Id: ID3v2Tag.pm,v 1.9 1999/10/25 13:56:53 mattd Exp $
+#    $Id: ID3v2Tag.pm,v 1.12 2000/09/11 18:53:18 mattd Exp $
 #    $Source: /cvsroot/tools/id3v2/lib/MPEG/ID3v2Tag.pm,v $
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -22,7 +25,7 @@ use strict ;
 package MPEG::ID3v2Tag ;
 
 use vars qw($VERSION) ;
-$VERSION = "0.10" ;
+$VERSION = "0.20" ;
 
 use Carp ;
 
@@ -59,6 +62,35 @@ sub frames
 }
 
 ####
+# Delete frame by frame id.
+# If n is provided,     deletes frame[n] of that particular frameid
+# If n is not provided, deletes all frames with that frame id
+####
+sub del_frame
+{
+  my ($self, $frameid, $frameocc) = @_;
+  my $i = 0;
+  my @newframes;
+  if (defined $frameocc) {
+    @newframes = grep {$_->frameid() ne $frameid or ($_->frameid() eq $frameid
+  and $i++ != $frameocc)} $self->frames();
+  } else {
+    @newframes = grep {$_->frameid() ne $frameid} $self->frames();
+  }
+  $self->frames(\@newframes);
+}
+
+sub set_frame
+{
+  my $self = shift;
+  my $frameid = shift;
+  $self->del_frame ($frameid);
+  $self->add_frame ($frameid, @_);
+}
+
+
+
+####
 # Return the entire tag as a binary string.
 ####
 sub as_string
@@ -71,7 +103,7 @@ sub as_string
   }
 
   if ($self->flag_extended_header()) {
-    $body = pack("NCCN", 10,  # ext-header-size
+    $body = pack("NCCN", 6,  # ext-header-size
                              0,   # no flags (I don't support CRC)
 			     $self->{PADDING_SIZE}) 
             . $body ;
@@ -92,7 +124,7 @@ sub as_string
     }
   }
   if ($self->{PADDING_SIZE}) {
-    $body .= '\0' x $self->{PADDING_SIZE} ;
+    $body .= "\0" x $self->{PADDING_SIZE} ;
   }
 
   my $size = length($body) ;
@@ -139,7 +171,7 @@ sub unsynchronize
   $data =~ s/\xff\0/\xff\0\0/g ;
 
   # zero stuff between 11111111 111xxxxx
-  $data =~ s/\xff([\xe0-\xff])/\xff\x00$1/g ;
+  $data =~ s/\xff(?=[\xe0-\xff])/\xff\x00/g ;
 
   return $data ;
 }
@@ -872,7 +904,7 @@ sub data_as_string
 {
   my $self = shift ;
   
-  return pack("Ca3Z*x", $self->{ENCODING}, $self->{LANGUAGE},
+  return pack("Ca3Z*", $self->{ENCODING}, $self->{LANGUAGE},
                        $self->{CONTENT_DESC})
 	. $self->{LYRICS} ;
 }
@@ -1417,7 +1449,3 @@ No support for modifying .mp3 files.
 Many frame types unimplemented.
 
 Most frame types don't have parsers.
-
-=head1 AUTHOR
-
-Written by Matt DiMeo (mattd@mp3.com)

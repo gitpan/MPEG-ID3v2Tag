@@ -1,2 +1,5 @@
 
 0.10:  Initial beta release
+
+0.20:  Fixed padding bug (Thanks to Bruno Prior); added del_frame & set_frame,
+       Fixed pack string for image tags (Thanks Ong Kian Win).
