@@ -3,7 +3,7 @@ use strict ;
 # This module may be copied under the same terms as perl itself.
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    $Id: ID3v2Tag.pm,v 1.19 2001/11/01 17:40:34 mattd Exp $
+#    $Id: ID3v2Tag.pm,v 1.21 2003/07/07 16:41:36 mattd Exp $
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -15,7 +15,7 @@ use strict ;
 package MPEG::ID3v2Tag ;
 
 use vars qw($VERSION) ;
-$VERSION = "0.35" ;
+$VERSION = "0.36" ;
 
 use Carp ;
 
@@ -273,10 +273,16 @@ sub parse
   my $tag = {} ;
   my $str ;
 
-  my ($header, $data) ;
-  my $readlen = read($fh, $header, 10) ;
-  croak "$!" if !defined $readlen ;
-  return undef if $readlen < 10 ;
+  my ($header, $data, $place) ;
+  if ((ref $fh) eq 'GLOB') {
+    my $readlen = read($fh, $header, 10) ;
+    croak "$!" if !defined $readlen ;
+    return undef if $readlen < 10 ;
+  } else {  ##not a filehandle. asume its a scalar 
+    $place = index($fh,"ID3");  ##the real start of the ID3 Tag!!
+    return undef if $place<0;
+    $header = substr($fh,$place,10);
+  }
 
   my ($id3, $flags, $totalsize) ;
   ($id3, $tag->{MAJORVER}, $tag->{MINORVER}, $flags, $totalsize) = unpack("a3CCCN", $header) ;
@@ -292,14 +298,17 @@ sub parse
   $tag->flag_extended_header( ($flags >> 6 ) & 1 ) ;
   $tag->flag_experimental( ($flags >> 5 ) & 1 ) ;
 
-  my $len = 0 ;
-  while ($len < $totalsize) {
-    $readlen = read($fh, $data, $totalsize - $len, $len) ;
-    croak "$!" if !defined $readlen ;
-    last if $readlen == 0 ;
-    $len += $readlen ;
+  if ((ref $fh) eq 'GLOB') {
+    my $len = 0 ;
+    while ($len < $totalsize) {
+      my $readlen = read($fh, $data, $totalsize - $len, $len) ;
+      croak "$!" if !defined $readlen ;
+      last if $readlen == 0 ;
+      $len += $readlen ;
+    }
+  } else {
+    $data = substr($fh,$place+10,$totalsize); ## easier if not a filehandle 
   }
-
   # now we have all the tag data, minus the main header, in $data.
   $data = un_unsynchronize($data) if $tag->flag_unsynchronization() ;
 
@@ -715,7 +724,38 @@ sub parse_data
 {
   my ($self, $data) = @_ ;
 
-  ($self->{ENCODING}, $self->{DATA}) = unpack("CZ*", $data) ;
+  #  ($self->{ENCODING}, $self->{DATA}) = unpack("CZ*", $data) ;
+  $self->{ENCODING} = unpack("C", substr( $data , 0 ,1 ) ) ;
+
+  if ($self->{ENCODING}==0) {
+    $self->{DATA} = unpack("Z*", substr( $data ,1 ) ) ;
+  } elsif ($self->{ENCODING}==1) {   ##with BOM
+    ######## a really dirty hack to change the UNICODE to normal ISO-8859-1  this will of course
+    ######## destroy the real unicode. so no need to write a UNICODE back to file
+    my @text_as_list;
+    $self->{BOM}  = unpack("n", substr( $data ,1 ,2 ) ) ;
+    if ($self->{BOM} == 0xfeff) {
+       @text_as_list = unpack("n*", substr( $data, 3) ) ;
+    }
+    else {
+       @text_as_list = unpack("v*", substr( $data, 3) ) ;
+    }
+    $self->{DATA} = pack("C*",@text_as_list);
+    $self->{ENCODING} = 0; ## now 
+  }
+  elsif ($self->{ENCODING}==2) { #no BOM here   ##never tested
+    ######## a really dirty hack to change the UNICODE to normal ISO-8859-1  this will of course
+    ######## destroy the real unicode. so no need to write a UNICODE back to file
+    my @text_as_list;           ##i hope this n is working for ENCODING type 2. else change to back to v like type 1
+    @text_as_list  = unpack("v*", substr( $data ,1 ) ) ;
+    $self->{DATA} = pack("C*",@text_as_list);
+    $self->{ENCODING} = 0; ## now 
+  } elsif ($self->{ENCODING}==3) {  ##never tested
+    my @text_as_list;
+    @text_as_list  = unpack("U*", substr( $data ,1 ) ) ;
+    $self->{DATA} = pack("C*",@text_as_list);
+    $self->{ENCODING} = 0; ## now 
+  }
 }
 
 sub encoding { return $_[0]->{ENCODING} } ;
@@ -1051,6 +1091,42 @@ sub new
                DESCRIPTION => $description,
 	       TEXT => $text } ;
   bless $self, $package ;
+}
+
+sub parse_data
+{
+  my($self, $data) = @_ ;
+
+  ( $self->{ENCODING} , $self->{LANGUAGE} ) = unpack("Ca3",substr($data,0,4));
+
+  my $textpos = index($data,"\0",4)+1;
+  my $desc = substr($data,4,$textpos-5);
+  my $text = substr($data,$textpos);
+
+  if ($self->{ENCODING}==0) {
+    $self->{DESCRIPTION} = $desc;
+    $self->{TEXT} = $text;
+  }
+  elsif ($self->{ENCODING}==1) {   ##with BOM
+    ######## a really dirty hack to change the UNICODE to normal ISO-8859-1  this will of course
+    ######## destroy the real unicode. so no need to write a UNICODE back to file
+    my @text_as_list_t;
+    my @text_as_list_d;
+
+    $self->{BOM}  = unpack("n", substr( $data ,1 ,2 ) ) ;
+    if ($self->{BOM} == 0xfeff) {
+       @text_as_list_t = unpack("n*", substr($text,2) ) ;
+       @text_as_list_d = unpack("n*", substr($desc,2) ) ;
+    }
+    else {
+       @text_as_list_t = unpack("v*", $text ) ;
+       @text_as_list_d = unpack("v*", $desc ) ;
+    }
+    $self->{DESCRIPTION} = pack("C*",@text_as_list_d);
+    $self->{TEXT} = pack("C*",@text_as_list_t);
+    $self->{ENCODING} = 0; ## now
+  }
+
 }
 
 sub data_as_string

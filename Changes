@@ -11,3 +11,8 @@
 
 0.35:  Added Andrew Arensburger patch to fix USLT parsing
        Added WXXX and TXXX support from Brian Degenhardt
+
+0.36:  Thomas Winkler patch - parse can now take a tag as string instead
+       of an open filehandle.  Text fields now support UNICODE, but forces
+       the data to iso-8859-1.  COMM now has a parse method.
+
