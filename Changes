@@ -3,3 +3,6 @@
 
 0.20:  Fixed padding bug (Thanks to Bruno Prior); added del_frame & set_frame,
        Fixed pack string for image tags (Thanks Ong Kian Win).
+
+0.32:  Fixed missing nul in USLT frame, fixed a couple documentation
+       errors (frame_id instead of frameid).

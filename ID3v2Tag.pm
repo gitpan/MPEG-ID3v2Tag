@@ -1,19 +1,9 @@
 use strict ;
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#   Copyright MP3.COM, Inc. 1998, 1999
-#   All Rights Reserved.  Licensed Software.
-#
-#   THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF MP3.COM, Inc.
-#   The copyright notice above does not evidence any actual or
-#   intended publication of such source code.
-#
-#   PROPRIETARY INFORMATION, PROPERTY OF MP3.COM, Inc.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This module may be copied under the same terms as perl itself.
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    $Id: ID3v2Tag.pm,v 1.12 2000/09/11 18:53:18 mattd Exp $
-#    $Source: /cvsroot/tools/id3v2/lib/MPEG/ID3v2Tag.pm,v $
+#    $Id: ID3v2Tag.pm,v 1.15 2001/05/09 18:13:00 mattd Exp $
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -25,7 +15,7 @@ use strict ;
 package MPEG::ID3v2Tag ;
 
 use vars qw($VERSION) ;
-$VERSION = "0.20" ;
+$VERSION = "0.32" ;
 
 use Carp ;
 
@@ -294,7 +284,7 @@ sub parse
   $tag->{ORIGINAL_SIZE} = $totalsize ;
   
   return undef if $id3 ne 'ID3' ;
-  croak "Versions < 3 not supported" if $tag->{MAJORVER} < 3 ;
+  return undef if $tag->{MAJORVER} < 3 ;
 
   bless $tag, $package ;
 
@@ -905,8 +895,8 @@ sub data_as_string
   my $self = shift ;
   
   return pack("Ca3Z*", $self->{ENCODING}, $self->{LANGUAGE},
-                       $self->{CONTENT_DESC})
-	. $self->{LYRICS} ;
+                       $self->{CONTENT_DESC}."\0")
+	. $self->{LYRICS} . "\0" ;
 }
 
 sub parse_data
@@ -1106,10 +1096,10 @@ B<MPEG::ID3v2Tag> - Parses and creates ID3v2 Tags for MPEG audio files.
     if ($frame->flag_read_only()) {
       print "  read only\n" ;
     } 
-    if ($frame->fully_parsed() && $frame->frame_id =~ /^T.../) {
+    if ($frame->fully_parsed() && $frame->frameid =~ /^T.../) {
       print "  frame text is ", $frame->text(), "\n" ;
     }
-    if ($frame->fully_parsed() && $frame->frame_id =~ /^W.../) {
+    if ($frame->fully_parsed() && $frame->frameid =~ /^W.../) {
       print "  url is ", $frame->url(), "\n" ;
     }
   }
@@ -1158,14 +1148,14 @@ Adds a new frame to the end of the tag.  The first form takes an object
 derived from the class MPEG::ID3Frame and simply appends it to the
 list of frames.  The second will take a four-letter frame id code
 (TALB, RBUF, SYLT, etc.) and attempt to call the new() method of
-the class MPEG::ID3Frame::<frame_id> to create the frame to be added.
+the class MPEG::ID3Frame::<frameid> to create the frame to be added.
 The arguments to the constructor will be those passed to ->add_frame(),
 minus the frame id.  If there is no new method, it will die.
 
 For details on the arguments for supported frames, see the
 FRAME SUPPORT section.
 
-=item @frames = $tag->get_frame(frame_id)
+=item @frames = $tag->get_frame(frameid)
 
 Given a four-letter frame id, this method will search the tag's frames
 for all that match and return them.  If called in scalar context,
