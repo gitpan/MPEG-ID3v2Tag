@@ -3,7 +3,7 @@ use strict ;
 # This module may be copied under the same terms as perl itself.
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    $Id: ID3v2Tag.pm,v 1.18 2001/11/01 17:19:52 mattd Exp $
+#    $Id: ID3v2Tag.pm,v 1.19 2001/11/01 17:40:34 mattd Exp $
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -15,7 +15,7 @@ use strict ;
 package MPEG::ID3v2Tag ;
 
 use vars qw($VERSION) ;
-$VERSION = "0.34" ;
+$VERSION = "0.35" ;
 
 use Carp ;
 

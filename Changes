@@ -6,3 +6,8 @@
 
 0.32:  Fixed missing nul in USLT frame, fixed a couple documentation
        errors (frame_id instead of frameid).
+
+0.34:  <upload error, do not use>
+
+0.35:  Added Andrew Arensburger patch to fix USLT parsing
+       Added WXXX and TXXX support from Brian Degenhardt
