@@ -1,6 +1,6 @@
 Changes
-ID3v2Tag.pm
 MANIFEST
 Makefile.PL
 README
-test.pl
+lib/MPEG/ID3v2Tag.pm
+t/MPEG-ID3v2Tag.t

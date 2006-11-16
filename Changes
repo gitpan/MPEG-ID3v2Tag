@@ -16,3 +16,4 @@
        of an open filehandle.  Text fields now support UNICODE, but forces
        the data to iso-8859-1.  COMM now has a parse method.
 
+0.37:  Bugfixes, restructuring of distribution, basic test suite

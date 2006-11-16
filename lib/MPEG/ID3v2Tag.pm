@@ -15,7 +15,7 @@ use strict ;
 package MPEG::ID3v2Tag ;
 
 use vars qw($VERSION) ;
-$VERSION = "0.36" ;
+$VERSION = "0.37" ;
 
 use Carp ;
 
@@ -340,7 +340,7 @@ sub parse
   # parse the frames while there is data to parse.
 
   while ($data ne '') {
-    my $frame = MPEG::ID3Frame->parse(\$data) ;
+    my $frame = MPEG::ID3Frame->parse(\$data, $tag) ;
     $tag->add_frame($frame) ;
   }
 
@@ -570,7 +570,7 @@ sub flags_as_string
 ####
 sub parse
 {
-  my ($package, $dataref) = @_ ;
+  my ($package, $dataref, $tag) = @_ ;
   my $self = {FROM_PARSER => 1} ;
   my ($body, $original_body) ;
   my $tmp ;
@@ -579,6 +579,10 @@ sub parse
   my $header = substr($$dataref, 0, 10, "") ;
   my ($frameid, $size, $flags0, $flags1) = unpack("a4NCC", $header) ;
   $self->{FRAMEID} = $frameid ;
+
+  if (defined $tag and $tag->{MAJORVER} == 4) {
+    $size = MPEG::ID3v2Tag::UnMungeSize($size);
+  }
 
   $self->flag_tag_alter(($flags0>>7) & 1) ;
   $self->flag_file_alter(($flags0>>6) & 1) ;
@@ -784,7 +788,7 @@ sub data_as_string
   my ($self) = @_ ;
 
   # zero for encoding=latin-1, and the rest is just the text, nul-terminated.
-  return pack("CZ*x", $self->{ENCODING}, $self->{DATA}) ;
+  return pack("CZ*", $self->{ENCODING}, $self->{DATA}) ;
 }
 
 sub dump
@@ -1035,8 +1039,8 @@ sub data_as_string
 {
   my $self = shift ;
   
-  my $data =  pack("CZ*x", $self->{ENCODING}, $self->{MIMETYPE})
-	     . pack("CZ*x", $self->{PICTURETYPE}, $self->{DESCRIPTION})
+  my $data =  pack("CZ*", $self->{ENCODING}, $self->{MIMETYPE})
+	     . pack("CZ*", $self->{PICTURETYPE}, $self->{DESCRIPTION})
 	     . $self->{DATA} ;
   return $data ;
 }
@@ -1250,6 +1254,7 @@ B<MPEG::ID3v2Tag> - Parses and creates ID3v2 Tags for MPEG audio files.
 
   # read a tag from a file and dump out some data.
   $fh = IO::File->new("<happysong.mp3") ;
+  binmode $fh;
   $tag = MPEG::ID3v2Tag->parse($fh) ;
   foreach $frame ($tag->frames()) {
     print $frame->frameid(), "\n" ;   # prints TALB, TIT2, WCOM, etc.
@@ -1344,6 +1349,9 @@ when set_padding_size() is set to a non-zero value.
 This method will construct a new tag by reading from a file containing
 an ID3v2 tag.  If there is no revision 3 tag in the file, undef is
 returned.
+
+The filehandle should be in binary mode.  This is not necesary on some 
+platforms, but it is on others, so it's a good habit to get into.
 
 Frame types for which a parse_data method has been written will
 be parsed individually, and (should) provide appropriate access methods
