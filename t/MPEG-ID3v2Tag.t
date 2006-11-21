@@ -1,17 +1,14 @@
 use strict;
 use warnings;
 
-use Cwd qw(getcwd);
 use FindBin;
+use File::Basename;
+use File::Spec;
 use Test::More tests => 8;
 
 use_ok('MPEG::ID3v2Tag');
 
-my $cwd = getcwd;
-my $PATH = $FindBin::Bin;
-$PATH =~ s{^\Q$cwd/}{};
-
-my $OUTPUT_FILENAME = "$PATH/test_output.mp3";
+my $OUTPUT_FILENAME = File::Spec->catfile($FindBin::Bin, "test_output.mp3");
 
 {
     my $tag = MPEG::ID3v2Tag->new();
@@ -21,7 +18,7 @@ my $OUTPUT_FILENAME = "$PATH/test_output.mp3";
     $tag->add_frame(
         "APIC",
         -picture_type => 0,
-        -file         => "$PATH/test_picture.gif"
+        -file         => File::Spec->catfile($FindBin::Bin, "test_picture.gif"),
     );
 
     my $frame = MPEG::ID3Frame::TALB->new("Test album");
@@ -31,8 +28,8 @@ my $OUTPUT_FILENAME = "$PATH/test_output.mp3";
 
     dump_tag($OUTPUT_FILENAME, $tag);
 
-    ok((-e $OUTPUT_FILENAME), "Existence of $OUTPUT_FILENAME without padding");
-    is((-s $OUTPUT_FILENAME), 2712, "Size of $OUTPUT_FILENAME without padding");
+    ok((-e $OUTPUT_FILENAME), "Existence of " . basename($OUTPUT_FILENAME) . " without padding");
+    is((-s $OUTPUT_FILENAME), 2712, "Size of " . basename($OUTPUT_FILENAME) . " without padding");
 
     unlink $OUTPUT_FILENAME;
 
@@ -40,13 +37,14 @@ my $OUTPUT_FILENAME = "$PATH/test_output.mp3";
 
     dump_tag($OUTPUT_FILENAME, $tag);
 
-    ok((-e $OUTPUT_FILENAME), "Existence of $OUTPUT_FILENAME with padding");
-    is((-s $OUTPUT_FILENAME), 2978, "Size of $OUTPUT_FILENAME with padding");
+    ok((-e $OUTPUT_FILENAME), "Existence of " . basename($OUTPUT_FILENAME) . " with padding");
+    is((-s $OUTPUT_FILENAME), 2978, "Size of " . basename($OUTPUT_FILENAME) . " with padding");
 }
 
 {
     open my $fh, "<", $OUTPUT_FILENAME
         or die "$OUTPUT_FILENAME: $!\n";
+    binmode $fh;
     my $tag = MPEG::ID3v2Tag->parse($fh);
 
     my %expected_value_of = (
@@ -75,6 +73,7 @@ sub dump_tag {
 
     open my $outfh, ">", $filename
         or die "$filename: $!\n";
+    binmode $outfh;
     print $outfh $tag->as_string();
     close $outfh;
 }

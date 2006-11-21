@@ -1,27 +1,26 @@
 use strict;
 use warnings;
 
-use Cwd qw(getcwd);
 use FindBin;
 use File::Basename;
+use File::Spec;
 use Test::More tests => 5;
 
 use_ok('MPEG::ID3v2Tag');
 
-my $cwd = getcwd;
-my $PATH = $FindBin::Bin;
-$PATH =~ s{^\Q$cwd/}{};
-
-my $OUTPUT_FILENAME = "$PATH/test_output.mp3";
+my $OUTPUT_FILENAME = File::Spec->catfile($FindBin::Bin, "test_output.mp3");
 
 {
     # Bug report: http://rt.cpan.org/Ticket/Display.html?id=22271
 
-    my @test_files = ("$PATH/test_file_v23.mp3", "$PATH/test_file_v24.mp3");
+    my @test_files = map { File::Spec->catfile($FindBin::Bin, $_) }
+                     "test_file_v23.mp3", "test_file_v24.mp3";
 
     for my $file (@test_files) {
         open my $fh, "<", $file
             or die "$file: $!\n";
+
+        binmode $fh;
 
         my $tag = MPEG::ID3v2Tag->parse($fh);
 
@@ -46,7 +45,7 @@ my $OUTPUT_FILENAME = "$PATH/test_output.mp3";
     $tag->add_frame(
         "APIC",
         -picture_type => 0,
-        -file         => "$PATH/test_picture.gif"
+        -file         => File::Spec->catfile($FindBin::Bin, "test_picture.gif"),
     );
     $tag->add_frame("TIT2", "Test title");
     write_tag(
@@ -64,6 +63,7 @@ sub write_tag {
 
     open my $outfh, ">", $filename
         or die "$filename: $!\n";
+    binmode $outfh;
     print $outfh $tag->as_string();
     close $outfh;
 }
