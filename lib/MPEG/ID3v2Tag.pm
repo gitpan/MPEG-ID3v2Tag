@@ -9,7 +9,7 @@ use strict;
 package MPEG::ID3v2Tag;
 
 use vars qw($VERSION);
-$VERSION = "0.38";
+$VERSION = "0.39";
 
 use Carp;
 
@@ -288,11 +288,17 @@ sub parse {
     if ( ( ref $fh ) eq 'GLOB' ) {
         my $readlen = read( $fh, $header, 10 );
         croak "$!"   if !defined $readlen;
-        return undef if $readlen < 10;
+        if ($readlen < 10) {
+            carp "Read less than 10 bytes";
+            return undef;
+        }
     }
     else {    ##not a filehandle. asume its a scalar
         $place = index( $fh, "ID3" );    ##the real start of the ID3 Tag!!
-        return undef if $place < 0;
+        if ($place < 0) {
+            carp "'ID3' not found in header";
+            return undef;
+        }
         $header = substr( $fh, $place, 10 );
     }
 
@@ -304,8 +310,14 @@ sub parse {
     $totalsize = UnMungeSize($totalsize);
     $tag->{ORIGINAL_SIZE} = $totalsize;
 
-    return undef if $id3 ne 'ID3';
-    return undef if $tag->{MAJORVER} < 3;
+    if ($id3 ne 'ID3') {
+        carp "Header does not begin with 'ID3'";
+        return undef;
+    }
+    if ($tag->{MAJORVER} < 3) {
+        carp "ID3 tag version is 2.$tag->{MAJORVER}.$tag->{MINORVER}, less than 2.3.0";
+        return undef;
+    }
 
     bless $tag, $package;
 
@@ -357,10 +369,11 @@ sub parse {
         }
     }
 
-    # now data contains just the frames, with no padding.
-    # parse the frames while there is data to parse.
+    # Now data contains just the frames.  If it's id3v2.3 it won't have
+    # padding, but if it's id3v2.4, it might.  Parse until the data is 
+    # empty or all padding.
 
-    while ( $data ne '' ) {
+    while ( $data ne '' and $data !~ /^\0+$/ ) {
         my $frame = MPEG::ID3Frame->parse( \$data, $tag );
         $tag->add_frame($frame);
     }

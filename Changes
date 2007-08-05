@@ -1,3 +1,5 @@
+0.39:  Major performance increase; should use less memory now
+
 0.38:  Reformatted the code using perltidy and manual tweaks
        Fixed the test suite to work properly on win32
        Removed unnecessary (and relatively large) file from the test suite

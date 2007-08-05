@@ -54,14 +54,16 @@ my $OUTPUT_FILENAME = File::Spec->catfile($FindBin::Bin, "test_output.mp3");
     );
 
     for my $frame ($tag->frames()) {
-        next unless $frame->frameid =~ /\w/;
-        next unless $frame->fully_parsed;
+        next if $frame->frameid eq "APIC";
 
         if ($frame->frameid =~ /^T/) {
             is($expected_value_of{$frame->frameid}, $frame->text, "Round trip of " . $frame->frameid);
         }
-        if ($frame->frameid =~ /^W/) {
+        elsif ($frame->frameid =~ /^W/) {
             is($expected_value_of{$frame->frameid}, $frame->url, "Round trip of " . $frame->frameid);
+        }
+        else {
+            fail("Extra frame " . $frame->frameid);
         }
     }
 
